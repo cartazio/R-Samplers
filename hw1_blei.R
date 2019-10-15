@@ -6,10 +6,10 @@ library(MCMCpack)
 source("./R/GibbsCore.R")
 
 ## Read in data
-undata <- read_csv("./data/country_profiles.csv") %>% 
-  clean_names() %>% 
-  mutate_at(vars(3:50), as.numeric) %>% 
-  na_if(-99)
+# undata <- read_csv("./data/country_profiles.csv") %>% 
+#   clean_names() %>% 
+#   mutate_at(vars(3:50), as.numeric) %>% 
+#   na_if(-99)
 
 # Initial state for mu's is random
 # Sample z's from x's, mu's, theta (set)
@@ -34,15 +34,10 @@ mysampler <- function(clustercount=4
   
 
   logSimpleMVNPDF <- function(data,mu) {
-    #logProd=0 # log 1 == 0
-    # for (i in 1:length(mu)) {
-    #   logProd = logProd + dnorm(data[i], mean = mu[i], sd = LAMBDA, log = TRUE)
-    # }
-    
-    expand.grid(data, mu)
-
-    logProd <- sum(map2(data, mu, function(data, mu){dnorm(data, mean = mu, sd = LAMBDA, log = TRUE)}
-                        ))
+    logProd=0 # log 1 == 0
+    for (i in 1:length(mu)) {
+      logProd = logProd + dnorm(data[i], mean = mu[i], sd = LAMBDA, log = TRUE)
+    }
     # how likely is each point in each dist to be from a given mean mu and sd lambda?
     # should be scalar
     logProd
@@ -50,7 +45,6 @@ mysampler <- function(clustercount=4
 
   logVectored_MVN_PDF <- function(data,muMultiVector){
     #generating all pairs of cluster gaussian dist generating the data prob
-    
     #  each row is a mu for a cluster
     # for each  column J of row K , we calculation prob x_J is from Normal(U_{J,K} , LAMBDA)
     # so the mvn pdf for data at a row would be  Product_j  {prob(x_{j} in pdfNorm(u_{j,k},lambda)}
@@ -133,7 +127,7 @@ mysampler <- function(clustercount=4
         proMU <- proposal$MU 
         log_prob_matrix <- apply(mydata, 1, function(myrow){logVectored_MVN_PDF(myrow,proMU)})
         
-          list(Z= z_rejection_sampler_clusterWeights(exp(  abs(max(log_prob_matrix)) + 10 + log(proTHETA)+ 
+          list(Z= z_rejection_sampler_clusterWeights(exp( #log(proTHETA)+ 
                   log_prob_matrix
                         
                     ))
