@@ -1,4 +1,5 @@
 ## Gibbs sampler
+library(infer)
 
 # x an n vector of data
 # pi a k vector
@@ -13,7 +14,9 @@ sample_z = function(x, pi, mu){
   z = rep(0, length(x))
   for(i in 1:length(z)){
     z[i] = sample(1:length(pi), size = 1, replace = TRUE, prob = prob_z[,i]) #Should be cat/multinomial?
-  }
+    #z[i] = rmultinom(1:length(pi), size = 1, prob = prob_z[,i])
+    
+      }
   return(z)
 }
 
@@ -59,18 +62,21 @@ Gauss1dim <- function(k, x){
       mu = rnorm(k, 0, 1)
       pi = rep(1/k, k)
       z = sample_z(x, pi, mu)
+      list(mu = mu, pi = pi, z = z)
       }
     
-    ,TransitionProposal=function(mu, pi){ # p_* for proposed_*
+    ,TransitionProposal=function(previousState){ # p_* for proposed_*
      p_mu <- sample_mu(x, z, k)
      p_pi <- sample_pi(z, k)
      p_z <- sample_z(x, pi, p_mu)
+     list(p_mu = p_mu, p_pi = p_pi, p_z = p_z)
     }
     
-    ,ApplyTransition=function(state,proposal){
+    ,ApplyTransition=function(previousState,proposal){
       mu <- p_mu
       pi <- p_pi
       z <- p_z
+      list(mu = mu, pi = pi, z = z)
       }
     
     ,ShouldWeTerminate=function(step,state,proposal){(step > 10)
