@@ -1,12 +1,10 @@
-
-
-#
-# This version logs everything
+# This version records everything
 #
 # gibbsHarness :: SeedOverRight , InitGibbState :: () -> NewState , transitionProposal :: (State-> StateChange)
 #     , ApplytransitionUpdate :: (CurrentState, Proposal) -> NewState
 #     , shouldItTerminate :: ( IterationCount,CurrentState,CurrentProposal -> Yes or NO  )
 #  -> (finalState, Number of Steps, Initial rng state,Initial GibbsState Value, stateHistory, transitionProposalHistory)
+
 gibbsHarness <- function(seed=NA # seed is fine to leave as NA
     ,InitGibbState=NA
     ,TransitionProposal=NA
@@ -32,7 +30,7 @@ initialRngSnapshot <- tryCatch({.Random.seed},error=function(e){rnorm(1); .Rando
 
 restoreRNG <- FALSE
 
-if (!is.na( seed))
+if (!is.na(seed))
   { set.seed(seed)
     restoreRNG <- TRUE
   }else {seed = initialRngSnapshot}
@@ -41,27 +39,23 @@ if (!is.na( seed))
 
 CurrentStep <- 0
 CurrentState <- InitGibbState()
-StateLog <- c(CurrentState)
+StateRecord <- c(CurrentState)
 CurrentProposal <- TransitionProposal(CurrentState)
-ProposalLog <- c(CurrentProposal)
+ProposalRecord <- c(CurrentProposal)
+
 while(!ShouldWeTerminate(CurrentStep,CurrentState,CurrentProposal)){
   CurrentStep <- CurrentStep + 1
   CurrentState <- ApplyTransition(CurrentState,CurrentProposal)
-  StateLog <- c(StateLog,CurrentState)
+  StateRecord <- c(StateRecord,CurrentState)
   CurrentProposal <- TransitionProposal(CurrentState)
-  ProposalLog <- c(ProposalLog,CurrentProposal)
+  ProposalRecord <- c(ProposalRecord,CurrentProposal)
 }
-
-
-
-
-
 
 # restore RNG if required
 if(restoreRNG)
   {set.seed(initialRngSnapshot)}
 
-c(FinalState=CurrentState,StepCount=CurrentStep,TheStateLog=StateLog,TheProposalLog=ProposalLog,InitialRNGState=seed)
+list(FinalState=CurrentState,StepCount=CurrentStep,TheStateRecord=StateRecord,TheProposalRecord=ProposalRecord,InitialRNGState=seed)
 }
 
 Gauss1dimWalk <- function(){
