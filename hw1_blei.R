@@ -16,11 +16,11 @@ undata <- read_csv("./data/country_profiles.csv") %>%
 # Sample mu's from x's and z's
 # Repeat until converged
 
-fakedat <- matrix(1:150, ncol = 10)
+fakedat <- matrix(rnorm(150), ncol = 10)
 
 mysampler <- function(clustercount=4
                       ,mydata=fakedat
-                      ,dirichlet_alpha=c(1/4,1/4,1/4,1/4)
+                      ,dirichlet_alpha=c(1,1,1,1)
                       ,LAMBDA=1) {
   
    # need to check sum to 1. abort otherwise 
@@ -34,34 +34,44 @@ mysampler <- function(clustercount=4
   
 
   logSimpleMVNPDF <- function(data,mu) {
-    logProd=0 # log 1 == 0
-    for (i in 1:length(mu)) {
-      logProd = logProd + dnorm(data[i], mean = mu[i], sd = LAMBDA, log = TRUE)
-    }
+    #logProd=0 # log 1 == 0
+    # for (i in 1:length(mu)) {
+    #   logProd = logProd + dnorm(data[i], mean = mu[i], sd = LAMBDA, log = TRUE)
+    # }
+    
+    expand.grid(data, mu)
 
+    logProd <- sum(map2(data, mu, function(data, mu){dnorm(data, mean = mu, sd = LAMBDA, log = TRUE)}
+                        ))
+    # how likely is each point in each dist to be from a given mean mu and sd lambda?
+    # should be scalar
     logProd
   }
 
   logVectored_MVN_PDF <- function(data,muMultiVector){
+    #generating all pairs of cluster gaussian dist generating the data prob
+    
     #  each row is a mu for a cluster
     # for each  column J of row K , we calculation prob x_J is from Normal(U_{J,K} , LAMBDA)
     # so the mvn pdf for data at a row would be  Product_j  {prob(x_{j} in pdfNorm(u_{j,k},lambda)}
     result <- apply(muMultiVector,1,function(mu) {logSimpleMVNPDF(data,mu)})
+    # should be 4 rows of cluster means, ncol == original data
     print(result)
     result
   }
   ## the >= 0.001 clamping should be a hyper parameter
   ## this is to ensure every cluster is non empty with nonzero probability
   clamped_theta_gen <- function(){ map2_dbl(  rdirichlet(1, dirichlet_alpha), rep(0.001, clustercount),function(x,y){max(x,y)})}
+  # we want non-zero membership
   theta_init <-clamped_theta_gen()
-  
+  # random clamped thetas from a dirichlet
   
   # Initiate mu's, draw from known mean and sd
   init_mu <- function(dummy){rnorm(data_dim, mean = mu_median, sd = mu_sd)}
-  zero_matrix <- matrix(0, nrow = clustercount, ncol = data_dim)
-  
+  #zero_matrix <- matrix(0, nrow = clustercount, ncol = data_dim)
   
   # for a cluster_count hyper param, assignment that isn't nonempty for every cluster is invalid, try again!
+  # no empty clusters
   z_rejection_sampler_init <- function(theta){
      z_guess <- matrix(0, nrow = rows, ncol = clustercount)
       while(!(  every(apply(z_guess,2,sum),function(x){x > 0})) 
@@ -72,6 +82,12 @@ mysampler <- function(clustercount=4
   }
   
 
+  # previous prob of each point being in each cluster
+  # use relative weights from 
+  # if vector is all zero, give uniform vector ?
+  # if not zero, print out vector ?
+  # if everything is unlikely, everything is equally likely
+  # maybe fall back to reciprical dist normalized
   z_rejection_sampler_clusterWeights <-function(memberProbWeights){
     print(memberProbWeights)
      z_guess <- matrix(0, nrow = rows, ncol = clustercount)
