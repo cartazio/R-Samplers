@@ -15,7 +15,7 @@ source("./R/GibbsCore.R")
 # Sample z's from x's, mu's, theta (set)
 # Sample mu's from x's and z's
 # Repeat until converged
-
+k = 4
 fakedat <- matrix(rnorm(150), ncol = 10)
 
 mysampler <- function(clustercount=4
@@ -75,6 +75,7 @@ mysampler <- function(clustercount=4
      z_guess
   }
   
+  #z_rejection_sampler_init(.5)
 
   # previous prob of each point being in each cluster
   # use relative weights from 
