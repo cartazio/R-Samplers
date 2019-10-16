@@ -103,9 +103,9 @@ Gauss1dim <- function(k, x){
     #ApplyTransition()
     ##
     
-    ,ShouldWeTerminate=function(step,state,proposal){(step > 10)
+    ,ShouldWeTerminate=function(step,state,proposal){(step > 1000)
     }
   )
 }
 
-Gauss1dim(k = 1, x = x)
+Gauss1dim(k = 4, x = x)
