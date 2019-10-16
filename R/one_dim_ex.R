@@ -1,10 +1,17 @@
 ## Gibbs sampler
+library(tidyverse)
+library(MCMCpack)
+
+source("./R/GibbsCore.R")
+
+fakedat <- matrix(rnorm(150), ncol = 10)
 x <- fakedat[,1]
 
 # x is an n vector of data
 # pi is a k vector
 # mu is a k vector
 sample_z = function(x, pi, mu){
+  k = length(pi)
   dist_matrix = outer(mu, x, "-")
   print(dim(dist_matrix))
   # distance matrix, x from mu
@@ -14,17 +21,18 @@ sample_z = function(x, pi, mu){
   print(dim(prob_z))
   
   #z = rep(0, length(x))
-  z = matrix(0, nrow = length(x), ncol = k)
-    
-  for(i in 1:nrow(z)){
+  z = matrix(0, nrow = nrow(prob_z), ncol = ncol(prob_z))
+
+    for(i in 1:ncol(z)){
     #z[i] = sample(1:length(pi), size = 1, replace = TRUE, prob = prob_z[,i]) #Should be cat/multinomial?
-    z[i,] <- rmultinom(1,1,prob = prob_z[,i])
+    z[,i] <- rmultinom(1,1,prob = prob_z[,i])
   }
   print(dim(z))
   return(z)
 }
 
-sample_z(x, pi, mu)
+#z <- 
+sample_z(x, pi = rep(1/4, 4), mu = rnorm(4, 0, 1))
 
 # z is a matrix of cluster allocations (n*k)
 # k is the number of clusters
@@ -34,7 +42,7 @@ sample_pi = function(z, k){
   return(pi)
 }
 
-sample_pi(z, k)
+#sample_pi(z, k = 4)
 
 # x is an n vector of data
 # z is a matrix of cluster allocations
@@ -57,7 +65,7 @@ sample_mu = function(x, z, k, prior=list(mean=0,prec=0.1)){
   return(mu)
 }
 
-sample_mu(x, z, k, list(mean=0,prec=0.1))
+#sample_mu(x, z, k=4, list(mean=0,prec=0.1))
 
 Gauss1dim <- function(k, x){
   gibbsHarness(
@@ -81,6 +89,7 @@ Gauss1dim <- function(k, x){
     
     ##
     #TransitionProposal(previousState)
+    #TransitionProposal(TransitionProposal(previousState))
     ##
     
     ,ApplyTransition=function(previousState,proposal){
@@ -89,6 +98,10 @@ Gauss1dim <- function(k, x){
       z <- proposal$z
       list(mu = mu, pi = pi, z = z)
       }
+    
+    ##
+    #ApplyTransition()
+    ##
     
     ,ShouldWeTerminate=function(step,state,proposal){(step > 10)
     }
