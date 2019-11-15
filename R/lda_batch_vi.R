@@ -41,7 +41,7 @@ estep <- function(n, b_vp, alpha) {
     # Initialize pi_ik_vp: pi[i,k] variational parameter
     pi_vp <- rdirichlet(nrow(n), alpha)
     # Empty c_ivk_vp: c[i,v,k] variational parameter array
-    c_vp <- array(0, dim = c(nrow(n), ncol(n), K))
+    c_vp <- array(1/K, dim = c(nrow(n), ncol(n), K))
     
     #iter <- 0
     #repeat {
@@ -76,23 +76,8 @@ estep <- function(n, b_vp, alpha) {
 # estep(n, matrix(rep(gamma, times = K), nrow = ncol(n), ncol = K), alpha)
 #
 
-# # maximization step
-# mstep <- function (gamma, s) {
-#   # b_vp <- matrix(0, nrow = ncol(n), ncol = K) # this is initialized in lda_vi so dont need it here
-#   for (v in 1:ncol(n)) { #added in some extra indexes, is this right?
-#   for (k in 1:K) {
-#     b_vp[v,k] <- gamma[v] + s[v,k]
-#   }
-#   }
-#   b_vp
-# }
-# 
-# #
-# mstep(gamma, matrix(0, nrow = ncol(n), ncol = K))
-# #
-
 # optimize
-lda_vi <- function (n, K, alpha, gamma) {
+lda_vi <- function (n, K, alpha, gamma, max_iter) {
   # estimate b_vk_vp using EM for multinomial mixtures
   b_vp <- t(rdirichlet(K, gamma)) # fill this in with random init
   
@@ -100,7 +85,8 @@ lda_vi <- function (n, K, alpha, gamma) {
   n <- dat # document term matrix with counts
 
   iter = 0
-  while (iter < 10) {
+  iterations <- list()
+  while (iter < max_iter) {
     
     iter = iter + 1
     s = matrix(0, nrow = ncol(n), ncol = K) # expected sufficient statistic
@@ -126,15 +112,13 @@ lda_vi <- function (n, K, alpha, gamma) {
           b_vp[v,k] <- gamma[v] + s[v,k]
         }
     }
-    b_vp
+    #iterations <- list(iter, pi_vp, b_vp, c_vp, s, K)
     #if (iter < 10) {converged <- TRUE} # need to compute elbo and log likelihood
   }
-  list(pi_vp, b_vp, c_vp, s, K)
+  list(pi_vp, b_vp, s, K) # dont save c, too much space
   }
 
-
-
-lda_vi(n, K, alpha, gamma)  
+lda_vi(n, K, alpha, gamma, max_iter = 100)  
   
   
   
