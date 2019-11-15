@@ -27,7 +27,6 @@ press[1:10,1:10]
 # Stop word: I, remove
 16/10473
 press %>%
-  select(-i) %>% 
   select_if(vars(sum(.) > 1000))
 
 #only 1000 most common words
@@ -36,8 +35,13 @@ press <- press %>%
   select_if(vars(sum(.) > 95)) #%>% 
   #as.matrix()
 
+index <- sample(nrow(press), size = 1500, replace = FALSE)
+
+training <- press[index,]
+testing <- press[-index,]
+
 K = 10
 a <- rep(1, times = K)
 g <- rep(1, times = 1003)
-lda_vi(press[1:200,2:1004], K, a, g, max_iter = 1)
+train <- lda_vi(n = training[,2:1004], K, a, g, max_iter = 100)
 
