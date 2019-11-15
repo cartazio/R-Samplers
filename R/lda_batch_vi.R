@@ -1,6 +1,6 @@
 # Batch VB for LDA
 library(MCMCpack)
-
+library(abind)
 # Inputs: n_iv, K, alpha_k, gamma_v
 
 dat <- matrix(rpois(50, lambda = 1), nrow = 5)
@@ -36,22 +36,23 @@ rdirichlet(K, gamma)
 # array(rep(n, times = 3), dim = c(5, 10, 3))
 
 # expectation step
-estep <- function(n, b_vp, alpha) {
+estep <- function(n, b_vp ,alpha,ix) {
+     K <- length(alpha)
     # update pi's and c's
-    # Initialize pi_ik_vp: pi[i,k] variational parameter
-    pi_vp <- rdirichlet(nrow(n), alpha)
-    # Empty c_ivk_vp: c[i,v,k] variational parameter array
-    c_vp <- array(1/K, dim = c(nrow(n), ncol(n), K))
+    # Initialize pi_ik_vp: pi[i][k] variational parameter, i fixed
+    pi_vp <- alpha
+    # Empty c_ivk_vp: c[i][v,k] variational parameter array, i fixed
+    c_vp <- array(1/K, dim = c(ncol(n), K))
     
-    #iter <- 0
-    #repeat {
+    iter <- 0
+    repeat {
       
-      #iter <- iter + 1
+      iter <- iter + 1
       
-      for (i in 1:nrow(n)) {
+      #for (i in 1:nrow(n)) {
         
       pi_vp_old <- pi_vp
-      pi_vp <- matrix(rep(alpha, times = nrow(n)), nrow = nrow(n), ncol = K)
+      pi_vp <- alpha
         
       # for v words
       for (v in 1:ncol(n)) {
@@ -59,15 +60,15 @@ estep <- function(n, b_vp, alpha) {
         # for k topics
         for(k in 1:K) {
           # Added column indexes here, is that ok?
-          c_vp[i,v,k] <- exp(digamma(b_vp[v,k]) + digamma(pi_vp_old[i,k])) #digammas per K
+            c_vp[v,k] <- exp(digamma(b_vp[v,k]) + digamma(pi_vp_old[k])) #digammas per K
           }
-        c_vp[i,v,] <- c_vp[i,v,]/sum(c_vp[i,v,]) #this is normalize to a simplex?
-        pi_vp[i,k] <- pi_vp[i,k] + (n[i,v] * c_vp[i,v,k]) #what kind of multiplication is this? 
+        c_vp[v,] <- c_vp[v,]/sum(c_vp[v,]) #this is normalize to a simplex?
+        pi_vp <- pi_vp + (n[ix,v] * c_vp[v,]) #what kind of multiplication is this? 
         }
-      #if (iter > 10){ # (1/K)*sum(abs(pi_vp[i,k] - pi_vp_old[i,k])) < thresh) {
-        #break
+      if (iter > 10){ # (1/K)*sum(abs(pi_vp[i,k] - pi_vp_old[i,k])) < thresh) {
+        break
     }
-      #}
+      }
     #}
     list(pi_vp, c_vp)
 }
@@ -77,6 +78,7 @@ estep <- function(n, b_vp, alpha) {
 #
 
 # optimize
+# todo : actual convergence criterion, most references leave it a tad implicity
 lda_vi <- function (n, K, alpha, gamma, max_iter) {
   # estimate b_vk_vp using EM for multinomial mixtures
   b_vp <- t(rdirichlet(K, gamma)) # fill this in with random init
@@ -85,40 +87,47 @@ lda_vi <- function (n, K, alpha, gamma, max_iter) {
   n <- dat # document term matrix with counts
 
   iter = 0
-  iterations <- list()
+  #iterations <- list()
+  pi_ik <- matrix(0, nrow=nrow(n), ncol = K)
+  s = matrix(0, nrow = ncol(n), ncol = K) # expected sufficient statistic
+  
+  trace_pi <- c()
+  trace_b <- c()
   while (iter < max_iter) {
     
     iter = iter + 1
-    s = matrix(0, nrow = ncol(n), ncol = K) # expected sufficient statistic
-    
+ 
     # e step
-    #for (i in 1:nrow(n)) {
-      estep_out <- estep(n, b_vp, alpha)
+    for (i in 1:nrow(n)) {
+      estep_out <- estep(n, b_vp, alpha, i)
       pi_vp <- estep_out[[1]]
       c_vp <- estep_out[[2]]
-      for (i in 1:nrow(n)) {
-      for (k in 1:K) {
-        for (v in i:ncol(n)) {
-          s[v,k] = s[v,k] + (n[i,v] * c_vp[i,v,k]) # what kind of multiplication is this?
+      pi_ik[i,]<- pi_vp
+      #for (i in 1:nrow(n)) {
+      # for (k in 1:K) {
+      #   for (v in i:ncol(n)) {
+          s = s + (n[i,] * c_vp[,]) # what kind of multiplication is this?
+      s
       }
-      }
-    }
-    pi_vp
-    c_vp
-    s
+      #}
+    #}
+    pi_ik
     # m step
     for (v in 1:ncol(n)) { #added in some extra indexes, is this right?
         for (k in 1:K) {
           b_vp[v,k] <- gamma[v] + s[v,k]
         }
     }
+    trace_pi <- abind(trace_pi, pi_ik, along=3)
+    trace_b <- abind(trace_b, b_vp, along = 3)
     #iterations <- list(iter, pi_vp, b_vp, c_vp, s, K)
     #if (iter < 10) {converged <- TRUE} # need to compute elbo and log likelihood
-  }
-  list(pi_vp, b_vp, s, K) # dont save c, too much space
+    }
+    list(pi_ik, b_vp, s, K, trace_pi, trace_b) # dont save c, too much space
+   
   }
 
-lda_vi(n, K, alpha, gamma, max_iter = 100)  
+lda_vi(n, K, alpha, gamma, max_iter = 3)  
   
   
   
