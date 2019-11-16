@@ -6,11 +6,6 @@ library(abind)
 # n_iv = document-term matrix
 # K = number of topics, set by researcher
 
-dat <- matrix(rpois(50, lambda = 1), nrow = 5)
-colnames(dat) <- letters[1:10]
-dat
-n <- dat
-
 # Hyperparameters set by researcher
 
 # one alpha for each K
@@ -42,13 +37,13 @@ estep <- function(n, b_vp ,alpha,ix) {
         
         # for k topics
         for(k in 1:K) {
-            c_vp[v,k] <- exp(digamma(b_vp[v,k]) + digamma(pi_vp_old[k])) #digammas per K
+            c_vp[v,k] <- exp(digamma(b_vp[v,k]) + digamma(pi_vp_old[k])) # digammas per K
           }
         c_vp[v,] <- c_vp[v,]/sum(c_vp[v,]) #this is normalized to a simplex
         pi_vp <- pi_vp + (n[ix,v] * c_vp[v,]) 
       }
       elbo_i <- sum((pi_vp - pi_vp_old)^2)
-      if (iter > 100){ 
+      if (iter > 10){ 
         break
     }
       }
@@ -58,9 +53,6 @@ estep <- function(n, b_vp ,alpha,ix) {
 # optimize
 lda_vi <- function (n, K, alpha, gamma, max_iter) {
   b_vp <- t(rdirichlet(K, gamma)) # fill this in with random init
-  
-  # initialize counts n_iv
-  n <- dat # document term matrix with counts
 
   iter = 0
   pi_ik <- matrix(0, nrow=nrow(n), ncol = K)
@@ -102,11 +94,10 @@ lda_vi <- function (n, K, alpha, gamma, max_iter) {
  
     }
     list(pi_ik = pi_ik, b_vp = b_vp, s = s, K = K, trace_pi = trace_pi, 
-         trace_b = trace_b, elbo, iter = 1:max_iter) # dont save c, too much space
+         trace_b = trace_b, elbo = elbo, iter = 1:max_iter) # dont save c, too much space
   }
 
-lda_vi(n, K, alpha, gamma, max_iter = 3)  
-  
+
   
   
   
