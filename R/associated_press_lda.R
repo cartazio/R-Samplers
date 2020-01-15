@@ -7,6 +7,7 @@
 #install.packages("kableExtra")
 library(kableExtra)
 library(knitr)
+#install.packages("stargazer")
 library(stargazer)
 library(tidyverse)
 #install.packages("tm")
@@ -21,7 +22,8 @@ AssociatedPress
 press <- tidy(AssociatedPress) %>% spread(key = term, value = count) %>% 
   mutate(document = 1:2246) %>% 
   select(document, everything()) %>% 
-  mutate_if(is.numeric , replace_na, replace = 0)
+  mutate_if(is.numeric , replace_na, replace = 0) %>% 
+  select(-document)
 
 dim(press)
 press[1:10,1:10]
@@ -35,7 +37,7 @@ press %>%
 
 #only 100 most common words
 press <- press %>%
-  select(-i, -document) %>% 
+  select(-i) %>% 
   select_if(vars(sum(.) > 425)) 
 dim(press)
 
@@ -46,10 +48,40 @@ press <- press %>%
   as.matrix()
 
 # Test / Training sets
-index <- sample(nrow(press), size = 1000, replace = FALSE)
+index <- sample(nrow(press), size = 100, replace = FALSE)
 training <- press[index,]
 testing <- press[-index,]
-testing <- testing[1:1000,]
+testing <- testing[1:100,]
+
+## STAN MODEL
+library(rstan)
+rstan_options(auto_write=TRUE)
+options(mc.cores=parallel::detectCores())
+
+ap_dat <- list(
+  K = 10,
+  V = ncol(training),
+  M = nrow(training),
+  X = training,
+  alpha = rep(1, times = 10),
+  beta = rep(1, times = ncol(training))
+)
+ap_dat
+
+fit <- stan(
+  file = "lda.stan",  # Stan program
+  data = ap_dat,    # named list of data
+  chains = 2,             # number of Markov chains
+  warmup = 1000,          # number of warmup iterations per chain
+  iter = 2000,            # total number of iterations per chain
+  cores = 2,              # number of cores (could use one per chain)
+)
+
+plot(fit)
+
+###################
+###################
+###################
 
 # Build model
 K = 10
