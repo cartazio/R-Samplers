@@ -1,3 +1,4 @@
+# Gibbs sampler loop
 # This version records everything
 #
 # gibbsHarness :: SeedOverRight , InitGibbState :: () -> NewState , transitionProposal :: (State-> StateChange)
@@ -5,7 +6,7 @@
 #     , shouldItTerminate :: ( IterationCount,CurrentState,CurrentProposal -> Yes or NO  )
 #  -> (finalState, Number of Steps, Initial rng state,Initial GibbsState Value, stateHistory, transitionProposalHistory)
 
-gibbsHarness <- function(seed=NA # seed is fine to leave as NA
+gibbsLoop <- function(seed=NA # seed is fine to leave as NA
     ,InitGibbState=NA
     ,TransitionProposal=NA
     ,ApplyTransition=NA
@@ -58,14 +59,16 @@ if(restoreRNG)
 list(FinalState=CurrentState,StepCount=CurrentStep,TheStateRecord=StateRecord,TheProposalRecord=ProposalRecord,InitialRNGState=seed)
 }
 
-Gauss1dimWalk <- function(){
-  gibbsHarness(
-    ,InitGibbState=function(){rnorm(1)}
-    ,TransitionProposal=function(x){rnorm(1) }# doesn't care about current state
-       # for graphs, you might depend on the # of nbrs of current vertex/state to determine how you sample over choosing which neighbor you propose moving to
-    ,ApplyTransition=function(state,proposal){state + proposal }
-    ,ShouldWeTerminate=function(step,state,proposal){ (step > 10 )|| sum(abs(proposal)) > 100 || sqrt(sum(state^2) > 400)
-    }
-    )
+## Trivial example
 
-}
+# Gauss1dimWalk <- function(){
+#   gibbsHarness(
+#     ,InitGibbState=function(){rnorm(1)}
+#     ,TransitionProposal=function(x){rnorm(1) }# doesn't care about current state
+#        # for graphs, you might depend on the # of nbrs of current vertex/state to determine how you sample over choosing which neighbor you propose moving to
+#     ,ApplyTransition=function(state,proposal){state + proposal }
+#     ,ShouldWeTerminate=function(step,state,proposal){ (step > 10 )|| sum(abs(proposal)) > 100 || sqrt(sum(state^2) > 400)
+#     }
+#     )
+# 
+# }

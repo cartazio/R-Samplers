@@ -1,48 +1,37 @@
 ## Gibbs sampler
 library(tidyverse)
-library(MCMCpack)
 
 source("./R/GibbsCore.R")
 
-fakedat <- matrix(rnorm(150), ncol = 10)
-x <- fakedat[,1]
-
 # x is an n vector of data
-# pi is a k vector
+# pie is a k vector
 # mu is a k vector
-sample_z = function(x, pi, mu){
-  k = length(pi)
+sample_z = function(x, pie, mu){
+  k = length(pie)
   dist_matrix = outer(mu, x, "-")
-  print(dim(dist_matrix))
+  
   # distance matrix, x from mu
   # k by n matrix, d_kj = (mu_k - x_j)
-  prob_z = log(as.vector(pi)) + log(dnorm(dist_matrix, 0, 1)) # sample z given pi and distance to mu ON LOG SCALE
+  prob_z = exp(log(as.vector(pie)) + log(dnorm(dist_matrix, 0, 1))) # sample z given pie and distance to mu ON LOG SCALE
   prob_z = apply(prob_z, 2, function(x){return(x/sum(x))}) # normalize columns
-  print(dim(prob_z))
   
   #z = rep(0, length(x))
   z = matrix(0, nrow = nrow(prob_z), ncol = ncol(prob_z))
 
     for(i in 1:ncol(z)){
-    #z[i] = sample(1:length(pi), size = 1, replace = TRUE, prob = prob_z[,i]) #Should be cat/multinomial?
-    z[,i] <- rmultinom(1,1,prob = prob_z[,i])
+    #z[i] = sample(1:length(pie), size = 1, replace = TRUE, prob = prob_z[,i]) #Should be cat/multinomial?
+    z[,i] <- rmultinom(1, 1, prob = prob_z[,i])
   }
-  print(dim(z))
   return(z)
 }
 
-#z <- 
-sample_z(x, pi = rep(1/4, 4), mu = rnorm(4, 0, 1))
-
 # z is a matrix of cluster allocations (n*k)
 # k is the number of clusters
-sample_pi = function(z, k){
-  counts = colSums(z)
-  pi = MCMCpack::rdirichlet(1,counts+1)
-  return(pi)
+sample_pie = function(z, k){
+  #counts = colSums(z)
+  pie = MCMCpack::rdirichlet(1,rep(1,k))
+  return(pie)
 }
-
-#sample_pi(z, k = 4)
 
 # x is an n vector of data
 # z is a matrix of cluster allocations
@@ -65,47 +54,31 @@ sample_mu = function(x, z, k, prior=list(mean=0,prec=0.1)){
   return(mu)
 }
 
-#sample_mu(x, z, k=4, list(mean=0,prec=0.1))
-
 Gauss1dim <- function(k, x){
-  gibbsHarness(
+  gibbsLoop(
     InitGibbState=function(){
       mu = rnorm(k, 0, 1)
-      pi = rep(1/k, k)
-      z = sample_z(x, pi, mu)
-      list(mu = mu, pi = pi, z = z)
+      pie = rep(1/k, k)
+      z = sample_z(x, pie, mu)
+      list(mu = mu, pie = pie, z = z)
       }
-    
-    ##
-    #previousState <- InitGibbState()
-    ##
     
     ,TransitionProposal=function(previousState){ # p_* for proposed_*
      p_mu <- sample_mu(x, previousState$z, k)
-     p_pi <- sample_pi(previousState$z, k)
-     p_z <- sample_z(x, p_pi, p_mu)
-     list(mu = p_mu, pi = pi, z = p_z)
+     p_pie <- sample_pie(previousState$z, k)
+     p_z <- sample_z(x, p_pie, p_mu)
+     list(mu = p_mu, pie = p_pie, z = p_z)
     }
-    
-    ##
-    #TransitionProposal(previousState)
-    #TransitionProposal(TransitionProposal(previousState))
-    ##
     
     ,ApplyTransition=function(previousState,proposal){
       mu <- proposal$mu
-      pi <- proposal$pi
+      pie <- proposal$pie
       z <- proposal$z
-      list(mu = mu, pi = pi, z = z)
+      list(mu = mu, pie = pie, z = z)
       }
     
-    ##
-    #ApplyTransition()
-    ##
-    
-    ,ShouldWeTerminate=function(step,state,proposal){(step > 1000)
+    ,ShouldWeTerminate=function(step,state,proposal){(step > 100)
     }
   )
 }
 
-Gauss1dim(k = 4, x = x)
