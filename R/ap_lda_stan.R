@@ -77,19 +77,26 @@ fit <- stan(
   cores = 2,              # number of cores (could use one per chain)
   verbose = TRUE
 )
+#save(fit, file = "lda_out.RDA")
+load(file = "lda_out.RDA")
 
 vi_model <- rstan::stan_model(
   file = "lda.stan")
 
-fit_vi <- rstan::vb(
+start_time <- Sys.time()
+fit_vi_mv <- rstan::vb(
   object = vi_model,  # Stan program
   data = ap_dat,      # named list of data
-  tol_rel_obj = 0.001 # convergence tolerance on the relative norm of the objective, default = 0.01.
+  iter = 4000,
+  tol_rel_obj = 0.001 # convergence tolerance, default = 0.01.
 )
+end_time <- Sys.time()
+end_time - start_time
 
-
-#save(fit, file = "lda_out.RDA")
-load(file = "lda_out.RDA")
+fit_vi_vm <- fit_vi
+# Warning: Pareto k diagnostic value is 7.22. Resampling is disabled. 
+# Decreasing tol_rel_obj may help if variational algorithm has terminated prematurely. 
+# Otherwise consider using sampling instead.
 
 print(fit)
 pairs(fit)
@@ -109,64 +116,3 @@ format(bayesplot::available_ppc()) # omit ppc_
 format(bayesplot::available_mcmc()) # omit mcmc_
 
 mcmc_rhat(rhat(fit))
-
-###################
-###################
-###################
-
-# Build model
-K = 10
-a <- rep(1/K, times = K)
-g <- rep(1, times = 104)
-dim(training)
-
-train <- lda_vi(n = training, K, a, g, max_iter = 100)
-
-# Normalize
-train$pi_ik <- t(apply(train$pi_ik, 1, function(x)(x/(sum(x))))) %>% as_tibble()
-train$b_vp <- apply(train$b_vp, 2, function(x)(x/(sum(x)))) %>% as_tibble()
-
-## Plot ELBO
-
-plot_elbo <- cbind(elbo = train$elbo, iter = train$iter) %>% as_tibble()
-
-plot_elbo %>% 
-  ggplot(aes(x = iter, y = elbo)) + geom_line() +
-  theme_bw() +
-  labs(x = "Evidence Lower Bound", y = "Iterations")
-
-# Visualize
-
-# Topic mixture of word loadings
-word_mix <- train$b_vp %>% as_tibble() %>% 
-  mutate_all(vars(./sum(.))) %>% as.matrix()
-
-rownames(word_mix) <- columns
-heatmap(word_mix)
-
-# Words with high loadings to topics
-
-topic_members <- word_mix %>% as_tibble() %>% 
-  cbind(., max = colnames(word_mix)[max.col(word_mix,ties.method="first")]) %>% 
-  as_tibble() %>% 
-  cbind(., word = columns) %>% as_tibble()
-  
-topics <- topic_members %>% 
-  select(max, word) %>% 
-  arrange(max)
-
-View(topics)
-
-table <- topic_members %>% 
-  spread(key = max, value = word)
-
-apply(table, 2, sort) %>% knitr::kable("latex")
-
-# Check model on held out data
-
-norm((training), type = "F")
-norm((testing), type = "F")
-norm((as.matrix(train$pi_ik) %*% t(as.matrix(train$b_vp))), type = "F")
-
-norm((training - as.matrix(train$pi_ik) %*% t(as.matrix(train$b_vp))), type = "F")
-norm((testing - as.matrix(train$pi_ik) %*% t(as.matrix(train$b_vp))), type = "F")
