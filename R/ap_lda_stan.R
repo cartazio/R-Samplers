@@ -48,7 +48,7 @@ testing <- press[-index,]
 
 ## STAN MODEL
 #install.packages("rstan")
-install.packages("brms")
+#install.packages("brms")
 library(rstan)
 library(rstanarm)
 library(bayesplot)
@@ -79,6 +79,7 @@ fit <- stan(
 )
 #save(fit, file = "lda_out.RDA")
 load(file = "lda_out.RDA")
+fit_vi_vm <- fit_vi
 
 vi_model <- rstan::stan_model(
   file = "lda.stan")
@@ -86,14 +87,13 @@ vi_model <- rstan::stan_model(
 start_time <- Sys.time()
 fit_vi_mv <- rstan::vb(
   object = vi_model,  # Stan program
-  data = ap_dat,      # named list of data
-  iter = 4000,
-  tol_rel_obj = 0.001 # convergence tolerance, default = 0.01.
+  data = ap_dat     # named list of data
+  #iter = 4000,
+  #tol_rel_obj = 0.001 # convergence tolerance, default = 0.01.
 )
 end_time <- Sys.time()
 end_time - start_time
 
-fit_vi_vm <- fit_vi
 # Warning: Pareto k diagnostic value is 7.22. Resampling is disabled. 
 # Decreasing tol_rel_obj may help if variational algorithm has terminated prematurely. 
 # Otherwise consider using sampling instead.
